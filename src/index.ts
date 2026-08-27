@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 3000;
 const NL_API_KEY = process.env.NL_API_KEY || "";
 
 const mcpServer = new Server(
-  { name: "national-library-mcp", version: "1.0.0" },
+  { name: "national-library-mcp", version: "1.1.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -24,16 +24,25 @@ mcpServer.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "search_books",
-        description: "국립중앙도서관에서 키워드로 책을 검색합니다.",
+        description: "국립중앙도서관에서 키워드, 정렬방식, 페이징을 지정하여 도서를 검색합니다.",
         inputSchema: {
           type: "object",
-          properties: { kwd: { type: "string", description: "검색할 키워드" } },
+          properties: {
+            kwd: { type: "string", description: "검색할 키워드 (예: 인공지능)" },
+            sort: { 
+              type: "string", 
+              description: "정렬 방식: pub_date(발행년도순), sim(관련도순), title(제목순)",
+              enum: ["pub_date", "sim", "title"] 
+            },
+            pageNum: { type: "number", description: "페이지 번호 (기본값: 1)" },
+            pageSize: { type: "number", description: "한번에 가져올 건수 (기본값: 10, 최대: 100)" }
+          },
           required: ["kwd"],
         },
       },
       {
         name: "search_by_isbn",
-        description: "국립중앙도서관에서 ISBN 번호로 도서를 검색합니다.",
+        description: "국립중앙도서관에서 ISBN 번호로 도서를 정확히 검색합니다.",
         inputSchema: {
           type: "object",
           properties: { isbn: { type: "string", description: "ISBN 번호" } },
@@ -46,9 +55,22 @@ mcpServer.setRequestHandler(ListToolsRequestSchema, async () => {
 
 mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === "search_books") {
-    const { kwd } = request.params.arguments as { kwd: string };
+    const { kwd, sort = "pub_date", pageNum = 1, pageSize = 10 } = request.params.arguments as {
+      kwd: string;
+      sort?: string;
+      pageNum?: number;
+      pageSize?: number;
+    };
+
     const res = await axios.get("https://www.nl.go.kr/NL/search/openApi/search.do", {
-      params: { key: NL_API_KEY, kwd, apiType: "json" },
+      params: {
+        key: NL_API_KEY,
+        kwd,
+        sort,
+        pageNum,
+        pageSize,
+        apiType: "json",
+      },
     });
     return { content: [{ type: "text", text: JSON.stringify(res.data, null, 2) }] };
   }
@@ -64,9 +86,8 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
   throw new Error("Tool을 찾을 수 없습니다.");
 });
 
-// 메인 주소 접속 확인용
 app.get("/", (req: Request, res: Response) => {
-  res.send("MCP Server is running!");
+  res.send("MCP Server v1.1.0 is running!");
 });
 
 let transport: SSEServerTransport | null = null;
