@@ -36,7 +36,7 @@ mcpServer.setRequestHandler(ListToolsRequestSchema, async () => {
         description: "국립중앙도서관에서 ISBN 번호로 도서를 검색합니다.",
         inputSchema: {
           type: "object",
-          properties: { isbn: { type: "string", description: "ISBN 번호" }, },
+          properties: { isbn: { type: "string", description: "ISBN 번호" } },
           required: ["isbn"],
         },
       },
@@ -64,6 +64,11 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
   throw new Error("Tool을 찾을 수 없습니다.");
 });
 
+// 메인 주소 접속 확인용
+app.get("/", (req: Request, res: Response) => {
+  res.send("MCP Server is running!");
+});
+
 let transport: SSEServerTransport | null = null;
 app.get("/sse", async (req: Request, res: Response) => {
   transport = new SSEServerTransport("/messages", res);
@@ -74,4 +79,4 @@ app.post("/messages", async (req: Request, res: Response) => {
   else res.status(400).send("SSE 연결 오류");
 });
 
-app.listen(PORT, () => console.log(`서버 실행 중`));
+app.listen(PORT, () => console.log(`서버 실행 중: ${PORT}`));
